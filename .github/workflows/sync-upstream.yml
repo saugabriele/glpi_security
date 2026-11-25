@@ -1,0 +1,33 @@
+
+name: Sync GLPI Upstream
+
+on:
+  schedule:
+    # Ogni giorno alle 05:00 UTC
+    - cron: "0 5 * * *"
+
+  # Avvio manuale
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: glpi-upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Synchronize with GLPI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Sync fork with upstream
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          UPSTREAM_BRANCH: 12.0/bugfixes
+        run: |
+          gh repo sync "$REPOSITORY" \
+            --source glpi-project/glpi \
+            --branch "$UPSTREAM_BRANCH"
