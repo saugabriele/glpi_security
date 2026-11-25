@@ -19,6 +19,10 @@ workflows:
         - 'actions/upload-artifact@v7.0.2'
         - 'ctrf-io/github-test-reporter@v1.3.2'
     '.github/workflows/commit-authorship.yml': []
+    '.github/workflows/docker-security-scan.yml':
+        - 'actions/checkout@v7.0.1'
+        - 'actions/upload-artifact@v7.0.2'
+        - 'aquasecurity/trivy-action@v0.36.0'
     '.github/workflows/docker_rebuild.yml':
         - 'actions/github-script@v9.0.0'
     '.github/workflows/docker_releases.yml': []
