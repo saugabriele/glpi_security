@@ -30,17 +30,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
 
-      # 1. SBOM - COMPONENT INVENTORY
+      # 1. SBOM - COMPONENT INVENTORY AND VULNERABILITIES
       - name: Generate CycloneDX SBOM
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
+          scanners: vuln
           format: cyclonedx
           output: glpi-sbom.cdx.json
 
-      # 2. SCA - DEPENDENCY VULNERABILITIES
-      - name: Trivy dependency vulnerability scan
+      # 2. SCA - DEPENDENCY VULNERABILITIES AND LICENSES
+      - name: Trivy SCA scan
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
@@ -61,9 +62,9 @@ jobs:
             --output glpi-sast-results.sarif \
             .
 
-      # UPLOAD SCA RESULTS TO GITHUB CODE SCANNING
-      - name: Upload Trivy SCA results
-        if: always() && hashFiles('glpi-sca-results.json') != ''
+      # GENERATE TRIVY SARIF
+      - name: Generate Trivy SARIF
+        if: always()
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
@@ -72,6 +73,7 @@ jobs:
           format: sarif
           output: trivy-results.sarif
 
+      # PUBLISH TRIVY RESULTS
       - name: Publish Trivy SARIF
         if: always() && hashFiles('trivy-results.sarif') != ''
         uses: github/codeql-action/upload-sarif@v4.39.5
@@ -79,7 +81,7 @@ jobs:
           sarif_file: trivy-results.sarif
           category: trivy-sca
 
-      # UPLOAD SAST RESULTS TO GITHUB CODE SCANNING
+      # PUBLISH SEMGREP RESULTS
       - name: Publish Semgrep SARIF
         if: always() && hashFiles('glpi-sast-results.sarif') != ''
         uses: github/codeql-action/upload-sarif@v4.39.5
