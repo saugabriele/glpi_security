@@ -22,6 +22,7 @@ workflows:
     '.github/workflows/docker-security-scan.yml':
         - 'actions/upload-artifact@v7.0.2'
         - 'aquasecurity/trivy-action@v0.36.0'
+        - 'docker/login-action@v3.7.0'
     '.github/workflows/docker_rebuild.yml':
         - 'actions/github-script@v9.0.0'
     '.github/workflows/docker_releases.yml': []
@@ -115,6 +116,11 @@ dependencies:
         commit: 'sha1-89ae32b08ed1a541efecbab17912962a5e38981c'
         owner_id: 7513068
         repo_id: 113918130
+    'docker/login-action@v3.7.0':
+        ref: 'v3.7.0'
+        commit: 'sha1-c94ce9fb468520275223c153574b00df6fe4bcc9'
+        owner_id: 5429470
+        repo_id: 287743349
     'github/codeql-action@v4.39.5':
         ref: 'v4.39.5'
         commit: 'sha1-915412ff23e8b7659517e607487dbeae018f2934'

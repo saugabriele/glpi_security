@@ -12,6 +12,7 @@ on:
       - "12.0/bugfixes"
     paths:
       - ".github/workflows/docker-security-scan.yml"
+      - "docker-compose.yml"
 
 permissions:
   contents: read
@@ -30,12 +31,20 @@ jobs:
       matrix:
         include:
           - name: glpi
-            image: glpi/glpi:latest
+            image: dhi.io/glpi@sha256:ccc9e9abe66009e8467ec40840241fdf85c05d282b353445d5e00183e77050b0
 
           - name: mysql
-            image: mysql:latest
+            image: mysql:8.4
 
     steps:
+      - name: Login to Docker Hardened Images registry
+        if: matrix.name == 'glpi'
+        uses: docker/login-action@v3.7.0
+        with:
+          registry: dhi.io
+          username: ${{ secrets.DHI_USERNAME }}
+          password: ${{ secrets.DHI_TOKEN }}
+
       - name: Pull Docker image
         run: docker pull "${{ matrix.image }}"
 
@@ -45,6 +54,9 @@ jobs:
           scan-type: image
           image-ref: ${{ matrix.image }}
           scanners: vuln,license
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: '1'
           format: json
           output: docker-sca-results.json
 
@@ -57,6 +69,7 @@ jobs:
           scanners: vuln
           format: cyclonedx
           output: docker-sbom.cdx.json
+          exit-code: '0'
 
       - name: Upload Docker SCA report
         if: always() && hashFiles('docker-sca-results.json') != ''
