@@ -3,7 +3,6 @@ name: Docker Security Scan
 
 on:
   schedule:
-    # Ogni giorno alle 06:00 UTC
     - cron: "0 6 * * *"
 
   workflow_dispatch:
@@ -12,78 +11,35 @@ on:
     branches:
       - "12.0/bugfixes"
     paths:
-      - "docker-compose.yml"
-      - "docker-compose.yaml"
-      - "compose.yml"
-      - "compose.yaml"
+      - ".github/workflows/docker-security-scan.yml"
 
 permissions:
   contents: read
-  security-events: write
 
 concurrency:
   group: docker-security-scan-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  discover:
-    name: Discover Docker images
-    runs-on: ubuntu-latest
-
-    outputs:
-      images: ${{ steps.images.outputs.matrix }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7.0.1
-
-      - name: Detect Docker Compose file
-        id: compose
-        run: |
-          if [ -f docker-compose.yml ]; then
-            echo "file=docker-compose.yml" >> "$GITHUB_OUTPUT"
-          elif [ -f docker-compose.yaml ]; then
-            echo "file=docker-compose.yaml" >> "$GITHUB_OUTPUT"
-          elif [ -f compose.yml ]; then
-            echo "file=compose.yml" >> "$GITHUB_OUTPUT"
-          elif [ -f compose.yaml ]; then
-            echo "file=compose.yaml" >> "$GITHUB_OUTPUT"
-          else
-            echo "Docker Compose file not found"
-            exit 1
-          fi
-
-      - name: Extract Docker images
-        id: images
-        env:
-          COMPOSE_FILE: ${{ steps.compose.outputs.file }}
-        run: |
-          IMAGES=$(docker compose -f "$COMPOSE_FILE" config --images |
-            sort -u |
-            jq -R -s -c 'split("\n") | map(select(length > 0)) |
-            map({image: ., name: (gsub("[^a-zA-Z0-9._-]"; "-"))})')
-
-          if [ "$IMAGES" = "[]" ]; then
-            echo "No Docker images found"
-            exit 1
-          fi
-
-          echo "matrix=$IMAGES" >> "$GITHUB_OUTPUT"
-          echo "Images found:"
-          echo "$IMAGES" | jq .
-
   scan:
-    name: Scan Docker image
-    needs: discover
+    name: Scan Docker images
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJson(needs.discover.outputs.images) }}
+        include:
+          - name: glpi
+            image: glpi/glpi:latest
+
+          - name: mysql
+            image: mysql:latest
 
     steps:
-      - name: Scan image with Trivy - SCA
+      - name: Pull Docker image
+        run: docker pull "${{ matrix.image }}"
+
+      - name: Trivy vulnerability scan
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: image
@@ -92,12 +48,13 @@ jobs:
           format: json
           output: docker-sca-results.json
 
-      - name: Generate Docker SBOM - CycloneDX
+      - name: Generate CycloneDX SBOM
         if: always()
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: image
           image-ref: ${{ matrix.image }}
+          scanners: vuln
           format: cyclonedx
           output: docker-sbom.cdx.json
 
