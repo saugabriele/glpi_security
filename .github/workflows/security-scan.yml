@@ -26,20 +26,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # CHECKOUT
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
 
-      # TRIVY - SCA
-      - name: Trivy dependency vulnerability scan
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          scan-type: fs
-          scan-ref: .
-          scanners: vuln,license
-          format: sarif
-          output: trivy-results.sarif
-
-      # TRIVY - SBOM
+      # 1. SBOM - COMPONENT INVENTORY
       - name: Generate CycloneDX SBOM
         uses: aquasecurity/trivy-action@v0.36.0
         with:
@@ -48,34 +39,77 @@ jobs:
           format: cyclonedx
           output: glpi-sbom.cdx.json
 
-      # SEMGREP - SAST
+      # 2. SCA - DEPENDENCY VULNERABILITIES
+      - name: Trivy dependency vulnerability scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,license
+          format: json
+          output: glpi-sca-results.json
+
+      # 3. SAST - SOURCE CODE ANALYSIS
       - name: Install Semgrep
         run: pipx install semgrep
 
       - name: Run Semgrep SAST
-        run: semgrep scan --config auto --sarif --output semgrep-results.sarif .
+        run: |
+          semgrep scan \
+            --config auto \
+            --sarif \
+            --output glpi-sast-results.sarif \
+            .
 
-      # UPLOAD - TRIVY SARIF
-      - name: Upload Trivy results
+      # UPLOAD SCA RESULTS TO GITHUB CODE SCANNING
+      - name: Upload Trivy SCA results
+        if: always() && hashFiles('glpi-sca-results.json') != ''
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,license
+          format: sarif
+          output: trivy-results.sarif
+
+      - name: Publish Trivy SARIF
         if: always() && hashFiles('trivy-results.sarif') != ''
         uses: github/codeql-action/upload-sarif@v4.39.5
         with:
           sarif_file: trivy-results.sarif
           category: trivy-sca
 
-      # UPLOAD - SEMGREP SARIF
-      - name: Upload Semgrep results
-        if: always() && hashFiles('semgrep-results.sarif') != ''
+      # UPLOAD SAST RESULTS TO GITHUB CODE SCANNING
+      - name: Publish Semgrep SARIF
+        if: always() && hashFiles('glpi-sast-results.sarif') != ''
         uses: github/codeql-action/upload-sarif@v4.39.5
         with:
-          sarif_file: semgrep-results.sarif
+          sarif_file: glpi-sast-results.sarif
           category: semgrep-sast
 
-      # SAVE SBOM
-      - name: Upload SBOM artifact
+      # ARTIFACT 1 - SBOM
+      - name: Upload SBOM
         if: always() && hashFiles('glpi-sbom.cdx.json') != ''
         uses: actions/upload-artifact@v7.0.2
         with:
           name: glpi-sbom-cyclonedx
           path: glpi-sbom.cdx.json
+          retention-days: 30
+
+      # ARTIFACT 2 - SCA
+      - name: Upload SCA report
+        if: always() && hashFiles('glpi-sca-results.json') != ''
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: glpi-sca-report
+          path: glpi-sca-results.json
+          retention-days: 30
+
+      # ARTIFACT 3 - SAST
+      - name: Upload SAST report
+        if: always() && hashFiles('glpi-sast-results.sarif') != ''
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: glpi-sast-report
+          path: glpi-sast-results.sarif
           retention-days: 30
