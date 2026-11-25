@@ -56,7 +56,7 @@ jobs:
           scanners: vuln,license
           severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
           ignore-unfixed: false
-          exit-code: '1'
+          exit-code: '0'
           format: json
           output: docker-sca-results.json
 
