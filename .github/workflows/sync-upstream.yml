@@ -11,7 +11,6 @@ on:
 
 permissions:
   contents: write
-  workflows: write
 
 concurrency:
   group: glpi-upstream-sync
@@ -25,7 +24,7 @@ jobs:
     steps:
       - name: Sync fork with upstream
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.UPSTREAM_SYNC_TOKEN }}
           REPOSITORY: ${{ github.repository }}
           UPSTREAM_BRANCH: 12.0/bugfixes
         run: |
