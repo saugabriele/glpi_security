@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: write
+  workflows: write
 
 concurrency:
   group: glpi-upstream-sync
